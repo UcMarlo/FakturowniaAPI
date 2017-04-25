@@ -134,7 +134,6 @@ public class FakturowniaClient {
 
     //returns invioices from  a custom perioid
     public static List<Invoice> getInvoices(String token, Date date_from, Date date_to) throws IOException {
-        //TODO
        String dateFrom = dateToString(date_from);
        String dateTo = dateToString(date_to);
        String url = createJsonURLfromToken(token,dateFrom,dateTo);

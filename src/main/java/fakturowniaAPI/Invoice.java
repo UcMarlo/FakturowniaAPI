@@ -1352,25 +1352,7 @@ public class Invoice {
     //endregion
 
 
-   /* @Override
-    public String toString()
-    {
-        String response = "Invoice [" +
-                "id: " + id +
-                " user_id: " + userId +
-                " app: " + app +
-                " number: " + number +
-                " place: " +place+
-                " sell_date: " +sellDate +
-                " payment_type: " +paymentType +
-                " price_net: " + priceNet +
-                " price_gross "+ priceGross +
-                +
 
-
-        return response;
-    }
-*/
     @Override
     public String toString()
     {

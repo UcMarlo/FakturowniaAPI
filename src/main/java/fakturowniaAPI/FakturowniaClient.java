@@ -14,10 +14,13 @@ import java.util.List;
 
 import okhttp3.Response;
 import okhttp3.OkHttpClient;
+
+//TODO JodaTime is unnecessary
 import org.joda.time.DateTime;
 import org.joda.time.Days;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
+//TODO use Log4j for logs
 
 
 
@@ -29,6 +32,11 @@ import org.joda.time.format.DateTimeFormatter;
 public class FakturowniaClient {
 
     private static OkHttpClient client = new OkHttpClient();
+    //TODO refactor
+
+    //TODO add token constructor and setter
+
+    //TODO hardcoded string should be extracted to static final halfclass
 
 
     private static String getJSON(String url) throws IOException {
@@ -106,6 +114,7 @@ public class FakturowniaClient {
     //returns invoices from specific perioids
     //acceptable periods : all, this_month, last_month, this_year, last_year
     //periods that wont match to these above will throw a InvalidArgumentException
+    //TODO period should be a enum type.
     public static List<Invoice> getInvoices(String token, String period) throws InvalidArgumentException, IOException {
         if(!period.equals("all")&&!period.equals("this_month")&&!period.equals("last_month")&&!period.equals("this_year")&&!period.equals("last_year")) {
             throw new InvalidArgumentException("Avaiable periods : this_month, last_month, this_year, last_year");
@@ -121,6 +130,7 @@ public class FakturowniaClient {
 
     //returns invioices from  a custom perioid
     // date format dd_MM_yyyy
+    @Deprecated
     public static List<Invoice> getInvoices(String token, String date_from, String date_to) throws IOException {
         String url = createJsonURLfromToken(token,date_from,date_to);
         String json = getJSON(url);
@@ -132,6 +142,7 @@ public class FakturowniaClient {
         return invoiceList;
     }
 
+    //TODO java.time.LocalDate <-
     //returns invioices from  a custom perioid
     public static List<Invoice> getInvoices(String token, Date date_from, Date date_to) throws IOException {
        String dateFrom = dateToString(date_from);
@@ -147,7 +158,6 @@ public class FakturowniaClient {
     }
 
     //endregion
-
 
     //region URL CREATORS
 
@@ -206,7 +216,6 @@ public class FakturowniaClient {
         return url;
     }
     //endregion
-
 
     //region DATE THINGS
 

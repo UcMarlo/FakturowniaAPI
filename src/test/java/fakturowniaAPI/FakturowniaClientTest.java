@@ -22,6 +22,8 @@ import static org.junit.Assert.*;
  * Created by Adam on 20.04.2017.
  */
 public class FakturowniaClientTest {
+
+    //TODO test method name should tell us what its her purpose 
     private static String getJSON(String url) throws IOException {
         OkHttpClient client = new OkHttpClient();
         Request request = new Request.Builder()
@@ -42,6 +44,8 @@ public class FakturowniaClientTest {
 
     @org.junit.Test
     public void getSummary() throws  Exception{
+
+        //TODO make more smaller methods
         boolean finite;
         InvoiceSummary summary;
         summary = FakturowniaClient.getSummary("5JCdT11J5iqzJ0E6f16I/awpraktyka","all");
@@ -66,6 +70,8 @@ public class FakturowniaClientTest {
         List<Invoice> actual;
         List<Invoice> expected;
         String json;
+
+        //TODO make more smaller methods
 
         actual = FakturowniaClient.getInvoices("5JCdT11J5iqzJ0E6f16I/awpraktyka","all");;
         json = getJSON("https://awpraktyka.fakturownia.pl/invoices.json?period=all&api_token=5JCdT11J5iqzJ0E6f16I/awpraktyka");

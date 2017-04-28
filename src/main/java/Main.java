@@ -15,7 +15,6 @@ public class Main {
 
         try {
             List<Invoice> list = client.getInvoices(Period.THIS_MONTH);
-            System.out.println(list.get(0).toString());
 
             LocalDate dateto = LocalDate.now();
             LocalDate datefrom = LocalDate.now().minusMonths(2);

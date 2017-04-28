@@ -15,21 +15,23 @@ import okhttp3.OkHttpClient;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+
 import static java.time.temporal.ChronoUnit.DAYS;
 import static java.time.temporal.TemporalAdjusters.*;
 
 
 
-//TODO use Log4j for logs
 
 public class FakturowniaClient {
-
-
-    String domainName;
-    String token;
+    private static final Logger LOGGER =LogManager.getLogger(FakturowniaClient.class);
+    private String domainName;
+    private String token;
     private final OkHttpClient client = new OkHttpClient();
 
-    private static final class HttpBuilder{
+    private static final class UrlBuilder {
         private static final String mainDomain = ".fakturownia.pl/";
         private static final String formatType = "invoices.json?";
         private static final String urlPrefix = "https://";
@@ -46,7 +48,7 @@ public class FakturowniaClient {
                     + formatType
                     + tokenPrefix
                     + token;
-
+            LOGGER.debug("CREATED URL : "+url);
             return url;
         }
 
@@ -61,6 +63,7 @@ public class FakturowniaClient {
                     + tokenPrefix
                     + token;
 
+            LOGGER.debug("CREATED URL : "+url);
             return url;
         }
 
@@ -78,6 +81,7 @@ public class FakturowniaClient {
                     + tokenPrefix
                     + token;
 
+            LOGGER.debug("CREATED URL : "+url);
             return url;
         }
 
@@ -90,24 +94,17 @@ public class FakturowniaClient {
     }
 
 
-
-
-
     public FakturowniaClient(String token){
         this.domainName = token.substring(token.indexOf("/")+1,token.length());
         this.token =  token;
     }
 
-
-    private  String getJSON(String url) throws IOException {
-        Request request = new Request.Builder()
-                .url(url)
-                .build();
-
-        Response response = client.newCall(request).execute();
-
-        return response.body().string();
+    public void setToken(String token){
+        this.domainName = token.substring(token.indexOf("/")+1,token.length());
+        this.token =  token;
     }
+
+
 
     //region SUMMARIES
 
@@ -165,20 +162,9 @@ public class FakturowniaClient {
 
     //region INVOICE GETTERS
 
-    //returns ALL invoices form the first to the last
-    public List<Invoice> getInvoices() throws IOException {
-        String url = HttpBuilder.createJsonURLfromToken(token, domainName);
-
-        String json = getJSON(url);
-
-        List<Invoice> invoiceList = pharseJSON(json);
-
-        return invoiceList;
-    }
-
     //returns invoices from specific perioids
     public  List<Invoice> getInvoices(Period period) throws  IOException {
-        String url = HttpBuilder.createJsonURLfromToken(token, domainName, period);
+        String url = UrlBuilder.createJsonURLfromToken(token, domainName, period);
 
         String json = getJSON(url);
 
@@ -189,7 +175,7 @@ public class FakturowniaClient {
 
     //returns invoices from  a custom period
     public  List<Invoice> getInvoices(LocalDate dateFrom, LocalDate dateTo) throws IOException {
-       String url = HttpBuilder.createJsonURLfromToken(token,domainName,dateFrom,dateTo);
+       String url = UrlBuilder.createJsonURLfromToken(token,domainName,dateFrom,dateTo);
        String json = getJSON(url);
 
        List<Invoice> invoiceList = pharseJSON(json);
@@ -199,12 +185,10 @@ public class FakturowniaClient {
 
     //endregion
 
-
     //region DATE THINGS
 
     private long getDays(LocalDate dateFrom, LocalDate dateTo){
         return DAYS.between(dateFrom,dateTo);
-
     }
 
     //calculate days by specific period
@@ -217,7 +201,7 @@ public class FakturowniaClient {
                     .withDayOfMonth(1);
 
             LocalDate end = initial;
-
+            
             daysPassed= DAYS.between(start,end);
         }
 
@@ -257,11 +241,22 @@ public class FakturowniaClient {
 
     //endregion
 
+
     private  List<Invoice> pharseJSON(String json){
         Gson gson = new Gson();
         Type listType = new TypeToken<ArrayList<Invoice>>(){}.getType();
         List<Invoice> invoiceList = gson.fromJson(json, listType);
         return invoiceList;
+    }
+
+    private  String getJSON(String url) throws IOException {
+        Request request = new Request.Builder()
+                .url(url)
+                .build();
+
+        Response response = client.newCall(request).execute();
+
+        return response.body().string();
     }
 
 }

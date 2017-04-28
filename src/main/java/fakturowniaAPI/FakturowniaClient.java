@@ -95,13 +95,14 @@ public class FakturowniaClient {
 
 
     public FakturowniaClient(String token){
-        this.domainName = token.substring(token.indexOf("/")+1,token.length());
-        this.token =  token;
+        this.setToken(token);
     }
 
     public void setToken(String token){
         this.domainName = token.substring(token.indexOf("/")+1,token.length());
         this.token =  token;
+
+        LOGGER.debug("DOMAIN : " + domainName + " TOKEN : " + token);
     }
 
 
@@ -201,8 +202,8 @@ public class FakturowniaClient {
                     .withDayOfMonth(1);
 
             LocalDate end = initial;
-            
-            daysPassed= DAYS.between(start,end);
+
+            daysPassed= DAYS.between(start,end) +1; // including starting date
         }
 
         if (period.getValue() == "last_month") {
@@ -214,7 +215,7 @@ public class FakturowniaClient {
                     .minusMonths(1)
                     .with(lastDayOfMonth());
 
-            daysPassed= DAYS.between(start,end);
+            daysPassed= DAYS.between(start,end) +1; // including starting date
         }
 
         if (period.getValue() == "this_year") {
@@ -223,7 +224,7 @@ public class FakturowniaClient {
 
             LocalDate end = initial;
 
-            daysPassed= DAYS.between(start,end);
+            daysPassed= DAYS.between(start,end) +1; // including starting date
         }
 
         if (period.getValue() == "last_year") {
@@ -233,9 +234,10 @@ public class FakturowniaClient {
             LocalDate end = initial.minusYears(1)
                     .with(lastDayOfYear());
 
-            daysPassed= DAYS.between(start,end);
+            daysPassed= DAYS.between(start,end) +1; // including starting date
         }
 
+        LOGGER.debug("CALCULATED DAYS : " + daysPassed + " FOR " + period.getValue() );
         return daysPassed;
     }
 

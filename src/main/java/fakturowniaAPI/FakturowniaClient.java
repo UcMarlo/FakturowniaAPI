@@ -4,42 +4,102 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import okhttp3.Request;
 
-
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.text.SimpleDateFormat;
+
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 import okhttp3.Response;
 import okhttp3.OkHttpClient;
 
-//TODO JodaTime is unnecessary
-import org.joda.time.DateTime;
-import org.joda.time.Days;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import static java.time.temporal.ChronoUnit.DAYS;
+import static java.time.temporal.TemporalAdjusters.*;
+
+
+
 //TODO use Log4j for logs
 
-
-
-/**
- * Created by Adam on 19.04.2017.
- */
-
-// example https://awpraktyka.fakturownia.pl/invoices.json?period=more&date_from=01_04_2017&date_to=21_04_2017&api_token=5JCdT11J5iqzJ0E6f16I
 public class FakturowniaClient {
 
-    private static OkHttpClient client = new OkHttpClient();
-    //TODO refactor
 
-    //TODO add token constructor and setter
+    String domainName;
+    String token;
+    private final OkHttpClient client = new OkHttpClient();
 
-    //TODO hardcoded string should be extracted to static final halfclass
+    private static final class HttpBuilder{
+        private static final String mainDomain = ".fakturownia.pl/";
+        private static final String formatType = "invoices.json?";
+        private static final String urlPrefix = "https://";
+        private static final String tokenPrefix = "&api_token=";
+        private static final String periodPrefix = "period=";
+        private static final String peroidMore = "period=more";
+        private static final String dateFromPrefix ="&date_from=";
+        private static final String dateToPrefix ="&date_to=";
+
+        public static String createJsonURLfromToken(String token, String domainName){
+            String url = urlPrefix
+                    + domainName
+                    + mainDomain
+                    + formatType
+                    + tokenPrefix
+                    + token;
+
+            return url;
+        }
+
+        public static String createJsonURLfromToken(String token,String domainName, Period period){
+
+            String url = urlPrefix
+                    + domainName
+                    + mainDomain
+                    + formatType
+                    + periodPrefix
+                    + period.getValue()
+                    + tokenPrefix
+                    + token;
+
+            return url;
+        }
+
+        public static String createJsonURLfromToken(String token,String domainName, LocalDate dateFrom, LocalDate dateTo){
+
+            String url = urlPrefix
+                    + domainName
+                    + mainDomain
+                    + formatType
+                    + peroidMore
+                    + dateFromPrefix
+                    + dateToString(dateFrom)
+                    + dateToPrefix
+                    + dateToString(dateTo)
+                    + tokenPrefix
+                    + token;
+
+            return url;
+        }
+
+        private static String dateToString(LocalDate date){
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd_MM_yyyy");
+            String formattedDate = date.format(formatter);
+            return formattedDate;
+        }
+
+    }
 
 
-    private static String getJSON(String url) throws IOException {
+
+
+
+    public FakturowniaClient(String token){
+        this.domainName = token.substring(token.indexOf("/")+1,token.length());
+        this.token =  token;
+    }
+
+
+    private  String getJSON(String url) throws IOException {
         Request request = new Request.Builder()
                 .url(url)
                 .build();
@@ -52,14 +112,10 @@ public class FakturowniaClient {
     //region SUMMARIES
 
     //returns summary of a specific period
-    //acceptable periods : all, this_month, last_month, this_year, last_year
-    //periods that wont match to these above will throw a InvalidArgumentException
-    public static InvoiceSummary getSummary(String token, String period) throws IOException, InvalidArgumentException {
-        if(!period.equals("all")&&!period.equals("this_month")&&!period.equals("last_month")&&!period.equals("this_year")&&!period.equals("last_year")) {
-            throw new InvalidArgumentException("Avaiable periods : this_month, last_month, this_year, last_year");
-        }else {
 
-            List<Invoice> invoiceList = getInvoices(token, period);
+    public  InvoiceSummary getSummary(Period period) throws IOException{
+
+        List<Invoice> invoiceList = getInvoices(period);
 
             double priceNet = 0;
             double priceGross = 0;
@@ -72,25 +128,23 @@ public class FakturowniaClient {
                 priceGross += Double.parseDouble(invoice.getPriceGross()) * exchangeRate;
                 priceTax += Double.parseDouble(invoice.getPriceTax()) * exchangeRate;
             }
-            int daysPassed = getDays(period);
+            long daysPassed = getDays(period);
 
             InvoiceSummary summary = new InvoiceSummary(priceNet, priceGross, priceTax, daysPassed);
             return summary;
-        }
+
     }
 
-    public static InvoiceSummary getSummary(String token, String dateFrom, String dateTo) throws IOException {
+
+    public  InvoiceSummary getSummary(LocalDate dateFrom, LocalDate dateTo) throws IOException {
         double priceNet = 0;
         double priceGross = 0;
         double priceTax = 0;
         double exchangeRate = 1;
-        int daysPassed = 0;
+        long daysPassed = 0;
 
-        DateTimeFormatter dtf = DateTimeFormat.forPattern("dd_MM_yyyy");
-        DateTime dateTimeFrom = DateTime.parse(dateFrom,dtf);
-        DateTime dateTimeTo = DateTime.parse(dateTo,dtf);
 
-        List<Invoice> invoiceList = getInvoices(token, dateFrom, dateTo);
+        List<Invoice> invoiceList = getInvoices(dateFrom, dateTo);
 
         for( Invoice invoice :invoiceList){
             exchangeRate = Double.parseDouble(invoice.getExchangeRate());
@@ -99,7 +153,7 @@ public class FakturowniaClient {
             priceTax += Double.parseDouble(invoice.getPriceTax()) *exchangeRate;
         }
 
-        daysPassed = getDays(dateTimeFrom,dateTimeTo);
+        daysPassed = getDays(dateFrom,dateTo);
 
         InvoiceSummary summary = new InvoiceSummary(priceNet,priceGross,priceTax, daysPassed);
         return summary;
@@ -111,159 +165,99 @@ public class FakturowniaClient {
 
     //region INVOICE GETTERS
 
-    //returns invoices from specific perioids
-    //acceptable periods : all, this_month, last_month, this_year, last_year
-    //periods that wont match to these above will throw a InvalidArgumentException
-    //TODO period should be a enum type.
-    public static List<Invoice> getInvoices(String token, String period) throws InvalidArgumentException, IOException {
-        if(!period.equals("all")&&!period.equals("this_month")&&!period.equals("last_month")&&!period.equals("this_year")&&!period.equals("last_year")) {
-            throw new InvalidArgumentException("Avaiable periods : this_month, last_month, this_year, last_year");
-        }else {
-            String url = createJsonURLfromToken(token, period);
-            String json = getJSON(url);
+    //returns ALL invoices form the first to the last
+    public List<Invoice> getInvoices() throws IOException {
+        String url = HttpBuilder.createJsonURLfromToken(token, domainName);
 
-            List<Invoice> invoiceList = pharseJSON(json);
-
-            return invoiceList;
-        }
-    }
-
-    //returns invioices from  a custom perioid
-    // date format dd_MM_yyyy
-    @Deprecated
-    public static List<Invoice> getInvoices(String token, String date_from, String date_to) throws IOException {
-        String url = createJsonURLfromToken(token,date_from,date_to);
         String json = getJSON(url);
 
-        Gson gson = new Gson();
-        Type listType = new TypeToken<ArrayList<Invoice>>(){}.getType();
-        List<Invoice> invoiceList =  gson.fromJson(json, listType);
+        List<Invoice> invoiceList = pharseJSON(json);
 
         return invoiceList;
     }
 
-    //TODO java.time.LocalDate <-
-    //returns invioices from  a custom perioid
-    public static List<Invoice> getInvoices(String token, Date date_from, Date date_to) throws IOException {
-       String dateFrom = dateToString(date_from);
-       String dateTo = dateToString(date_to);
-       String url = createJsonURLfromToken(token,dateFrom,dateTo);
+    //returns invoices from specific perioids
+    public  List<Invoice> getInvoices(Period period) throws  IOException {
+        String url = HttpBuilder.createJsonURLfromToken(token, domainName, period);
+
+        String json = getJSON(url);
+
+        List<Invoice> invoiceList = pharseJSON(json);
+
+        return invoiceList;
+    }
+
+    //returns invoices from  a custom period
+    public  List<Invoice> getInvoices(LocalDate dateFrom, LocalDate dateTo) throws IOException {
+       String url = HttpBuilder.createJsonURLfromToken(token,domainName,dateFrom,dateTo);
        String json = getJSON(url);
 
        List<Invoice> invoiceList = pharseJSON(json);
 
-
-
-        return invoiceList;
+       return invoiceList;
     }
 
     //endregion
 
-    //region URL CREATORS
-
-
-    private static String createJsonURLfromToken(String token){
-        final String mainDomain = ".fakturownia.pl/";
-        final String formatType = "invoices.json?";
-        String domainName = token.substring(token.indexOf("/")+1,token.length());
-
-        String url = "https://"
-                + domainName
-                + mainDomain
-                + formatType
-                + "&api_token="
-                + token;
-
-        return url;
-    }
-
-
-
-    private static String createJsonURLfromToken(String token, String period){
-        final String mainDomain = ".fakturownia.pl/";
-        final String formatType = "invoices.json?";
-        String domainName = token.substring(token.indexOf("/")+1,token.length());
-
-        String url = "https://"
-                + domainName
-                + mainDomain
-                + formatType
-                + "period="
-                + period
-                + "&api_token="
-                + token;
-
-        return url;
-    }
-
-    private static String createJsonURLfromToken(String token, String dateFrom, String dateTo){
-        final String mainDomain = ".fakturownia.pl/";
-        final String formatType = "invoices.json?";
-        String domainName = token.substring(token.indexOf("/")+1,token.length());
-
-        String url = "https://"
-                + domainName
-                + mainDomain
-                + formatType
-                + "period=more"
-                + "&date_from="
-                + dateFrom
-                + "&date_to="
-                + dateTo
-                + "&api_token="
-                + token;
-
-        return url;
-    }
-    //endregion
 
     //region DATE THINGS
 
-    private static int getDays(DateTime dateFrom, DateTime dateTo){
-        return Days.daysBetween(dateFrom,dateTo).getDays();
+    private long getDays(LocalDate dateFrom, LocalDate dateTo){
+        return DAYS.between(dateFrom,dateTo);
+
     }
 
     //calculate days by specific period
-    private static int getDays(String period){
-        int daysPassed = 0;
-        if (period.equals("this_month")) {
-            DateTime start = new DateTime().withDayOfMonth(1);
-            DateTime end = new DateTime();
-            daysPassed= Days.daysBetween(start,end).getDays();
+    private long getDays(Period period){
+        long daysPassed = 0;
+        LocalDate initial = LocalDate.now();
+
+        if (period.getValue() == "this_month") {
+            LocalDate start = initial
+                    .withDayOfMonth(1);
+
+            LocalDate end = initial;
+
+            daysPassed= DAYS.between(start,end);
         }
-        if (period.equals("last_month")) {
-            DateTime start = new DateTime().minusMonths(1).withDayOfMonth(1);
-            DateTime end = new DateTime().minusMonths(1);
-            end = end.dayOfMonth().withMaximumValue();
-            daysPassed= Days.daysBetween(start,end).getDays();
+
+        if (period.getValue() == "last_month") {
+            LocalDate start = initial
+                    .minusMonths(1)
+                    .with(firstDayOfMonth());
+
+            LocalDate end = initial
+                    .minusMonths(1)
+                    .with(lastDayOfMonth());
+
+            daysPassed= DAYS.between(start,end);
         }
-        if (period.equals("this_year")) {
-            DateTime start = new DateTime().withMonthOfYear(1).withDayOfMonth(1);
-            DateTime end = new DateTime();
-            daysPassed= Days.daysBetween(start,end).getDays();
+
+        if (period.getValue() == "this_year") {
+            LocalDate start = initial
+                    .with(firstDayOfYear());
+
+            LocalDate end = initial;
+
+            daysPassed= DAYS.between(start,end);
         }
-        if (period.equals("last_year")) {
-            DateTime start = new DateTime().minusYears(1).withMonthOfYear(1).withDayOfMonth(1);
-            DateTime end = new DateTime().minusYears(1);
-            end = end.monthOfYear().withMaximumValue();
-            end = end.dayOfMonth().withMaximumValue();
-            daysPassed= Days.daysBetween(start,end).getDays();
+
+        if (period.getValue() == "last_year") {
+            LocalDate start = initial.minusYears(1)
+                    .with(firstDayOfYear());
+
+            LocalDate end = initial.minusYears(1)
+                    .with(lastDayOfYear());
+
+            daysPassed= DAYS.between(start,end);
         }
 
         return daysPassed;
     }
 
-    // dd_MM_yyyy format
-    private static String dateToString(Date date){
-        String formattedDate = new SimpleDateFormat("dd_MM_yyyy").format(date);
-
-        return formattedDate;
-    }
-
     //endregion
 
-    // returns list of invoices
-    private static List<Invoice> pharseJSON(String json){
+    private  List<Invoice> pharseJSON(String json){
         Gson gson = new Gson();
         Type listType = new TypeToken<ArrayList<Invoice>>(){}.getType();
         List<Invoice> invoiceList = gson.fromJson(json, listType);

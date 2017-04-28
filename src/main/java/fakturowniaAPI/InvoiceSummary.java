@@ -9,11 +9,11 @@ public class InvoiceSummary {
     private double priceNet;
     private double priceGross;
     private double priceTax;
-    private int daysPassed;
+    private long daysPassed;
 
     //region CONSTRUCTORS
 
-    public InvoiceSummary(double priceNet, double priceGross, double priceTax , int daysPassed){
+    public InvoiceSummary(double priceNet, double priceGross, double priceTax , long daysPassed){
         this.priceGross = priceGross;
         this.priceNet = priceNet;
         this.priceTax = priceTax;
@@ -38,6 +38,10 @@ public class InvoiceSummary {
         return priceTax;
     }
 
+    public long getDaysPassed() {
+        return daysPassed;
+    }
+
     public void setPriceNet(double priceNet) {
         this.priceNet = priceNet;
     }
@@ -49,6 +53,11 @@ public class InvoiceSummary {
     public void setPriceTax(double priceTax) {
         this.priceTax = priceTax;
     }
+
+    public void setDaysPassed(long daysPassed) {
+        this.daysPassed = daysPassed;
+    }
+
     //endregion
 
     //region PRICE PER DAY

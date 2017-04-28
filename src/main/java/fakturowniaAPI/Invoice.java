@@ -1352,11 +1352,10 @@ public class Invoice {
     //endregion
 
 
-
     @Override
     public String toString()
     {
-        return "ClassPojo [seller_tax_no = "+sellerTaxNo+
+        return "Invoice [seller_tax_no = "+sellerTaxNo+
                 ", invoice_template_id = "+invoiceTemplateId+
                 ", buyer_tax_no = "+buyerTaxNo+
                 ", product_id = "+productId+
